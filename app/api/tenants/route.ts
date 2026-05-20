@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest) {
 
   const old = toObject(await db.execute({ sql: 'SELECT room_id FROM tenants WHERE id = ?', args: [id] }));
   if (old?.room_id && old.room_id !== room_id) {
-    await db.execute({ sql: `UPDATE rooms SET status = 'vacant' WHERE id = ?`, args: [old.room_id] });
+    await db.execute({ sql: `UPDATE rooms SET status = 'vacant' WHERE id = ?`, args: [Number(old.room_id)] });
   }
   if (room_id) {
     await db.execute({
