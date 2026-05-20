@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!meterSheet) return NextResponse.json({ error: 'ไม่พบ sheet บันทึกมิเตอร์' }, { status: 400 });
 
   const ws = workbook.Sheets[meterSheet];
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { header: 1, defval: '' }) as unknown[][];
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][];
 
   // Find header row (look for row with ห้องที่ or similar)
   let headerRow = -1;
