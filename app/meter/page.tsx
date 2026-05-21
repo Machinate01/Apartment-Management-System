@@ -23,9 +23,10 @@ export default function MeterPage() {
   const [prevMeters, setPrevMeters] = useState<Meter[]>([]);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [defaultRates, setDefaultRates] = useState({ water: '20', elec: '10' });
   const [form, setForm] = useState({
     room_id: '', water_prev: '', water_curr: '', electricity_prev: '', electricity_curr: '',
-    water_rate: '18', electricity_rate: '8',
+    water_rate: '20', electricity_rate: '10',
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,6 +37,13 @@ export default function MeterPage() {
 
   useEffect(() => {
     fetch('/api/rooms').then(r => r.json()).then(setRooms);
+    // โหลดอัตราค่าน้ำ/ไฟจาก settings
+    fetch('/api/settings').then(r => r.json()).then((s: Record<string, string>) => {
+      const w = s.water_rate || '20';
+      const e = s.electricity_rate || '10';
+      setDefaultRates({ water: w, elec: e });
+      setForm(f => ({ ...f, water_rate: w, electricity_rate: e }));
+    });
   }, []);
 
   useEffect(() => {
@@ -98,8 +106,12 @@ export default function MeterPage() {
         electricity_curr: '',
       }));
     } else {
-      // ไม่มีข้อมูลเดือนก่อนเลย → ล้างฟอร์ม
-      setForm(f => ({ ...f, water_prev: '', water_curr: '', electricity_prev: '', electricity_curr: '' }));
+      // ไม่มีข้อมูลเดือนก่อนเลย → ล้างฟอร์ม แต่คงอัตราจาก settings
+      setForm(f => ({
+        ...f,
+        water_prev: '', water_curr: '', electricity_prev: '', electricity_curr: '',
+        water_rate: defaultRates.water, electricity_rate: defaultRates.elec,
+      }));
     }
   };
 
