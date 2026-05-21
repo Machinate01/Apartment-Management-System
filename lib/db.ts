@@ -119,6 +119,16 @@ async function initSchema(db: Client) {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS utility_bills (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      water_bill REAL DEFAULT 0,
+      electricity_bill REAL DEFAULT 0,
+      notes TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(month, year)
+    );
   `);
 
   const defaults: [string, string][] = [
