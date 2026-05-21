@@ -20,6 +20,7 @@ export default function MeterPage() {
   const now = new Date();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [meters, setMeters] = useState<Meter[]>([]);
+  const [prevMeters, setPrevMeters] = useState<Meter[]>([]);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [form, setForm] = useState({
@@ -29,12 +30,17 @@ export default function MeterPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Previous month (for pre-filling เลขเดิม)
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
   useEffect(() => {
     fetch('/api/rooms').then(r => r.json()).then(setRooms);
   }, []);
 
   useEffect(() => {
     fetch(`/api/meters?month=${month}&year=${year}`).then(r => r.json()).then(setMeters);
+    fetch(`/api/meters?month=${prevMonth}&year=${prevYear}`).then(r => r.json()).then(setPrevMeters);
   }, [month, year]);
 
   const waterUsage = Number(form.water_curr) - Number(form.water_prev);
@@ -67,9 +73,33 @@ export default function MeterPage() {
   };
 
   const loadPrevMeter = (roomId: number) => {
-    const prev = meters.find(m => m.room_id === roomId);
+    // 1) ถ้ามีข้อมูลเดือนนี้แล้ว → โหลดมาแก้ไข (ครบทุกช่อง)
+    const curr = meters.find(m => m.room_id === roomId);
+    if (curr) {
+      setForm(f => ({
+        ...f,
+        water_prev: String(curr.water_prev),
+        water_curr: String(curr.water_curr),
+        electricity_prev: String(curr.electricity_prev),
+        electricity_curr: String(curr.electricity_curr),
+        water_rate: String(curr.water_rate),
+        electricity_rate: String(curr.electricity_rate),
+      }));
+      return;
+    }
+    // 2) ยังไม่มีข้อมูลเดือนนี้ → ดึงเลขปลายเดือนที่แล้วมาเป็น "เลขเดิม"
+    const prev = prevMeters.find(m => m.room_id === roomId);
     if (prev) {
-      setForm(f => ({ ...f, water_prev: String(prev.water_curr), electricity_prev: String(prev.electricity_curr) }));
+      setForm(f => ({
+        ...f,
+        water_prev: String(prev.water_curr),
+        water_curr: '',
+        electricity_prev: String(prev.electricity_curr),
+        electricity_curr: '',
+      }));
+    } else {
+      // ไม่มีข้อมูลเดือนก่อนเลย → ล้างฟอร์ม
+      setForm(f => ({ ...f, water_prev: '', water_curr: '', electricity_prev: '', electricity_curr: '' }));
     }
   };
 
@@ -110,13 +140,23 @@ export default function MeterPage() {
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
           {/* Room selector */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">เลือกห้อง</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">เลือกห้อง</label>
+              {form.room_id && (
+                meters.find(m => m.room_id === Number(form.room_id))
+                  ? <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">✏️ แก้ไขข้อมูลเดือนนี้</span>
+                  : prevMeters.find(m => m.room_id === Number(form.room_id))
+                    ? <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">✓ โหลดเลขเดิมจากเดือนก่อน</span>
+                    : <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">ยังไม่มีข้อมูลเดือนก่อน</span>
+              )}
+            </div>
             <select
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-base font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
               value={form.room_id}
               onChange={e => {
-                setForm(f => ({ ...f, room_id: e.target.value }));
-                if (e.target.value) loadPrevMeter(Number(e.target.value));
+                const id = e.target.value;
+                setForm(f => ({ ...f, room_id: id, water_prev: '', water_curr: '', electricity_prev: '', electricity_curr: '' }));
+                if (id) loadPrevMeter(Number(id));
               }}>
               <option value="">-- เลือกห้อง --</option>
               {rooms.filter(r => r.status === 'occupied').map(r =>
