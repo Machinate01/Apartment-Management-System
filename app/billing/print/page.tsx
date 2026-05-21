@@ -148,17 +148,16 @@ export default function PrintBillPage() {
             display: block !important;
             padding: 0 !important;
             background: white !important;
-            gap: 0 !important;
           }
+          /* KEY: display:block (not flex) so page-break-after works in Chrome */
           .a4-page {
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
-            min-height: 297mm !important;
             padding: 8mm !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
             box-shadow: none !important;
-            display: flex !important;
-            flex-direction: column !important;
             overflow: hidden !important;
             page-break-after: always !important;
             break-after: page !important;
@@ -167,15 +166,18 @@ export default function PrintBillPage() {
             page-break-after: auto !important;
             break-after: auto !important;
           }
+          /* Each bill row = half of content area: (297-16mm padding - 3mm sep) / 2 = 139mm */
           .bill-row {
-            flex: 1 !important;
-            min-height: 0 !important;
             display: flex !important;
+            height: 139mm !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
             overflow: hidden !important;
           }
           .row-sep {
-            margin: 2mm 0 !important;
-            flex-shrink: 0 !important;
+            display: block !important;
+            height: 3mm !important;
+            margin: 0 !important;
           }
           .col-sep {
             margin: 0 2mm !important;
