@@ -163,7 +163,9 @@ export default function RoomsPage() {
                                   <span className={`w-2 h-2 rounded-full ${s.color}`} />
                                 </div>
                                 <p className="text-xs text-slate-500">{s.label}</p>
-                                {room.tenant_name && <p className="text-xs text-blue-600 mt-0.5 truncate">{room.tenant_name}</p>}
+                                {room.status === 'occupied' && room.tenant_name && (
+                                  <p className="text-xs text-blue-600 mt-0.5 truncate">{room.tenant_name}</p>
+                                )}
                               </div>
                             );
                           })}

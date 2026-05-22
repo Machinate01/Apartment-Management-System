@@ -32,10 +32,23 @@ export async function PUT(req: NextRequest) {
   const db = await getDb();
   const body = await req.json();
   const { id, room_number, building, floor, type, rent_price, status } = body;
+
+  // Get current room status to detect changes
+  const current = toObject(await db.execute({ sql: 'SELECT status FROM rooms WHERE id=?', args: [id] }));
+
   await db.execute({
     sql: `UPDATE rooms SET room_number=?, building=?, floor=?, type=?, rent_price=?, status=? WHERE id=?`,
     args: [room_number, building ?? 1, floor, type, rent_price, status, id],
   });
+
+  // If room changed to vacant/maintenance → set linked active tenant to inactive + remove room_id
+  if (current?.status !== status && (status === 'vacant' || status === 'maintenance')) {
+    await db.execute({
+      sql: `UPDATE tenants SET status='inactive', room_id=NULL WHERE room_id=? AND status='active'`,
+      args: [id],
+    });
+  }
+
   return NextResponse.json({ success: true });
 }
 
