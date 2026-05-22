@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Paths that don't need authentication
 const PUBLIC = ['/login', '/api/auth', '/_next', '/favicon.ico', '/public'];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow public paths through
