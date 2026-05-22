@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Gauge, Receipt, BarChart2,
-  FileText, Grid3X3, FileSignature, Package, MessageSquare,
+  LayoutDashboard, Gauge, Receipt,
+  FileText, Grid3X3, FileSignature,
   Settings, Upload, LogOut
 } from 'lucide-react';
 
@@ -13,11 +13,8 @@ const mainItems = [
   { href: '/rooms', label: 'ผังห้อง', icon: Grid3X3 },
   { href: '/meter', label: 'จดมิเตอร์', icon: Gauge },
   { href: '/billing', label: 'ทำบิล', icon: Receipt },
-  { href: '/analytics', label: 'วิเคราะห์ข้อมูล', icon: BarChart2 },
   { href: '/reports', label: 'รายงานสรุป', icon: FileText },
   { href: '/contracts', label: 'สัญญาเช่า', icon: FileSignature },
-  { href: '/parcels', label: 'พัสดุ', icon: Package },
-  { href: '/communication', label: 'สื่อสาร', icon: MessageSquare },
 ];
 
 const utilItems = [

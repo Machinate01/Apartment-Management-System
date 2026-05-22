@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Plus, CheckCircle, X, Printer, History } from 'lucide-react';
+import { Receipt, Plus, CheckCircle, X, Printer, History, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 interface Room { id: number; room_number: string; rent_price: number; status: string; tenant_name?: string; }
 interface Meter { room_id: number; water_prev: number; water_curr: number; electricity_prev: number; electricity_curr: number; water_rate: number; electricity_rate: number; }
@@ -100,6 +101,44 @@ export default function BillingPage() {
     load();
   };
 
+  const exportExcel = () => {
+    const statusTH = (s: string) => s === 'paid' ? 'ชำระแล้ว' : s === 'overdue' ? 'เกินกำหนด' : 'ยังไม่ชำระ';
+    const rows = bills.map(b => ({
+      'ห้อง': b.room_number,
+      'ผู้เช่า': b.tenant_name || '',
+      'ค่าเช่า (฿)': b.rent,
+      'ค่าน้ำ (฿)': b.water,
+      'ค่าไฟ (฿)': b.electricity,
+      'ค่าอื่นๆ (฿)': b.other,
+      'รายละเอียดค่าอื่น': b.other_desc || '',
+      'รวม (฿)': b.total,
+      'สถานะ': statusTH(b.status),
+      'ครบกำหนด': b.due_date || '',
+      'วันชำระ': b.paid_date || '',
+    }));
+
+    // Summary row
+    rows.push({
+      'ห้อง': 'รวม',
+      'ผู้เช่า': '',
+      'ค่าเช่า (฿)': bills.reduce((s, b) => s + b.rent, 0),
+      'ค่าน้ำ (฿)': bills.reduce((s, b) => s + b.water, 0),
+      'ค่าไฟ (฿)': bills.reduce((s, b) => s + b.electricity, 0),
+      'ค่าอื่นๆ (฿)': bills.reduce((s, b) => s + b.other, 0),
+      'รายละเอียดค่าอื่น': '',
+      'รวม (฿)': bills.reduce((s, b) => s + b.total, 0),
+      'สถานะ': `ชำระแล้ว ${bills.filter(b => b.status === 'paid').length}/${bills.length} ห้อง`,
+      'ครบกำหนด': '',
+      'วันชำระ': '',
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [8, 18, 12, 10, 10, 10, 18, 12, 12, 12, 12].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${MONTHS_TH[month]} ${year}`);
+    XLSX.writeFile(wb, `บิล_${MONTHS_TH[month]}_${year}.xlsx`);
+  };
+
   const openHistory = async (roomId: number, roomNumber: string) => {
     setHistoryRoom({ id: roomId, number: roomNumber });
     const res = await fetch(`/api/bills?room_id=${roomId}`);
@@ -123,6 +162,9 @@ export default function BillingPage() {
           <p className="text-slate-500 text-sm mt-1">จัดการบิลค่าเช่าประจำเดือน</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={exportExcel} disabled={bills.length === 0} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-40">
+            <FileSpreadsheet size={15} /> Export Excel
+          </button>
           <Link href={`/billing/print?month=${month}&year=${year}`} className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800">
             <Printer size={15} /> พิมพ์ใบวางบิล
           </Link>
