@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Settings, Save, CheckCircle, Plus, Building2 } from 'lucide-react';
+import { Settings, Save, CheckCircle, Plus, Building2, AlertTriangle, Wrench } from 'lucide-react';
 
 interface AppSettings {
   apt_name: string;
@@ -15,6 +15,8 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedDone, setSeedDone] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   const [seedCount, setSeedCount] = useState(40);
   const [seedFloors, setSeedFloors] = useState(4);
   const [prefix, setPrefix] = useState('');
@@ -50,6 +52,27 @@ export default function SettingsPage() {
     setSeedDone(true);
     setTimeout(() => setSeedDone(false), 3000);
     alert(`สร้างห้องสำเร็จ ${created} ห้อง`);
+  };
+
+  const repairRooms = async () => {
+    setRepairing(true);
+    const res = await fetch('/api/reset');
+    const data = await res.json();
+    setRepairing(false);
+    alert(data.message || `ซ่อมแล้ว ${data.fixed} ห้อง`);
+  };
+
+  const resetData = async () => {
+    const confirmed = prompt(
+      'คำเตือน: จะลบผู้เช่า มิเตอร์ และบิลทั้งหมด (ห้องยังอยู่)\n\nพิมพ์ "ยืนยัน" เพื่อดำเนินการ'
+    );
+    if (confirmed !== 'ยืนยัน') return;
+    setResetting(true);
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    setResetting(false);
+    alert(data.message || 'ล้างข้อมูลสำเร็จ');
+    window.location.reload();
   };
 
   const seedSimple = async () => {
@@ -153,6 +176,37 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="text-xs text-slate-400">ตัวอย่าง: {prefix}101, {prefix}102, {prefix}201... ({seedFloors} ชั้น รวม {seedCount} ห้อง)</p>
+        </div>
+      </div>
+      {/* ซ่อมและล้างข้อมูล */}
+      <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm space-y-4">
+        <h3 className="font-semibold text-slate-700 flex items-center gap-2"><Wrench size={16} /> ซ่อมข้อมูล</h3>
+
+        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+          <Wrench size={18} className="text-blue-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-800">ซ่อม Room Status</p>
+            <p className="text-xs text-blue-600 mt-0.5">ห้องที่ค้างสถานะ &quot;มีผู้เช่า&quot; ทั้งที่ไม่มีผู้เช่าจริง → เปลี่ยนเป็น &quot;ว่าง&quot; ทันที</p>
+          </div>
+          <button onClick={repairRooms} disabled={repairing}
+            className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0">
+            {repairing ? 'กำลังซ่อม...' : 'ซ่อมเลย'}
+          </button>
+        </div>
+
+        <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
+          <AlertTriangle size={18} className="text-red-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">ล้างข้อมูลสำหรับใช้งานจริง</p>
+            <p className="text-xs text-red-600 mt-0.5">
+              ลบ: ผู้เช่าทั้งหมด · มิเตอร์ทั้งหมด · บิลทั้งหมด<br />
+              คงไว้: ห้อง · ตั้งค่า (ห้องจะกลับเป็น &quot;ว่าง&quot; ทั้งหมด)
+            </p>
+          </div>
+          <button onClick={resetData} disabled={resetting}
+            className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 shrink-0">
+            {resetting ? 'กำลังล้าง...' : 'ล้างข้อมูล'}
+          </button>
         </div>
       </div>
     </div>

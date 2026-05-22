@@ -51,3 +51,36 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(req: NextRequest) {
+  const db = await getDb();
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+
+  if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
+
+  // Get tenant's room before deleting
+  const tenant = toObject(await db.execute({
+    sql: 'SELECT room_id FROM tenants WHERE id = ?',
+    args: [Number(id)],
+  }));
+
+  // Delete the tenant
+  await db.execute({ sql: 'DELETE FROM tenants WHERE id = ?', args: [Number(id)] });
+
+  // If they had a room → check if any other active tenant still occupies it
+  if (tenant?.room_id) {
+    const stillOccupied = toObject(await db.execute({
+      sql: `SELECT id FROM tenants WHERE room_id = ? AND status = 'active' LIMIT 1`,
+      args: [Number(tenant.room_id)],
+    }));
+    if (!stillOccupied) {
+      await db.execute({
+        sql: `UPDATE rooms SET status = 'vacant' WHERE id = ?`,
+        args: [Number(tenant.room_id)],
+      });
+    }
+  }
+
+  return NextResponse.json({ success: true });
+}

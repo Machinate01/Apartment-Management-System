@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, X, Edit2, User } from 'lucide-react';
+import { Plus, X, Edit2, User, Trash2 } from 'lucide-react';
 
 interface Room {
   id: number;
@@ -86,6 +86,13 @@ export default function RoomsPage() {
     setShowTenantModal(true);
   };
 
+  const deleteTenant = async (t: Tenant) => {
+    const roomInfo = t.room_number ? ` (ห้อง ${t.room_number})` : '';
+    if (!confirm(`ลบ "${t.name || 'ผู้เช่า'}"${roomInfo} ออกจากระบบ?\n\nห้องจะเปลี่ยนสถานะเป็น "ว่าง" ทันที`)) return;
+    await fetch(`/api/tenants?id=${t.id}`, { method: 'DELETE' });
+    load();
+  };
+
   const vacantRooms = rooms.filter(r => r.status === 'vacant');
 
   // Group rooms by building → floor
@@ -119,7 +126,7 @@ export default function RoomsPage() {
         {(['rooms', 'tenants'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === tab ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-            {tab === 'rooms' ? `ผังห้อง (${rooms.length})` : `ผู้เช่า (${tenants.filter(t => t.status === 'active').length})`}
+            {tab === 'rooms' ? `ผังห้อง (${rooms.length})` : `ผู้เช่า (${tenants.filter(t => t.status === 'active').length}/${tenants.length})`}
           </button>
         ))}
       </div>
@@ -189,21 +196,28 @@ export default function RoomsPage() {
               </tr>
             </thead>
             <tbody>
-              {tenants.filter(t => t.status === 'active').map(t => (
-                <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{t.name}</td>
+              {tenants.map(t => (
+                <tr key={t.id} className={`border-b border-slate-50 hover:bg-slate-50 ${t.status !== 'active' ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-3 font-medium text-slate-800">{t.name || <span className="text-slate-400 italic">ไม่มีชื่อ</span>}</td>
                   <td className="px-4 py-3 text-slate-500">{t.room_number || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{t.phone || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{t.start_date || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{t.end_date || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">฿{t.deposit.toLocaleString()}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">กำลังเช่า</span></td>
                   <td className="px-4 py-3">
-                    <button onClick={() => openEditTenant(t)} className="text-slate-400 hover:text-blue-600"><Edit2 size={15} /></button>
+                    {t.status === 'active'
+                      ? <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">กำลังเช่า</span>
+                      : <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs">ไม่ใช้งาน</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEditTenant(t)} className="text-slate-400 hover:text-blue-600"><Edit2 size={15} /></button>
+                      <button onClick={() => deleteTenant(t)} className="text-slate-400 hover:text-red-500"><Trash2 size={15} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
-              {tenants.filter(t => t.status === 'active').length === 0 && (
+              {tenants.length === 0 && (
                 <tr><td colSpan={8} className="text-center py-8 text-slate-400">ยังไม่มีผู้เช่า</td></tr>
               )}
             </tbody>
