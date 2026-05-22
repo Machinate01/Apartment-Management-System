@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="th" className="h-full">
       <body className="h-full flex bg-slate-50 antialiased">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-16 md:pb-0">
           {children}
         </main>
       </body>
