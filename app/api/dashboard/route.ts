@@ -7,17 +7,37 @@ export async function GET() {
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
-  const [roomStats, revenue, unpaid, parcels, contracts, revenueByMonth] = await Promise.all([
+  // Auto-mark overdue before reading stats
+  await db.execute(`
+    UPDATE bills SET status='overdue'
+    WHERE status='unpaid' AND due_date IS NOT NULL AND due_date < date('now')
+  `);
+
+  const [roomStats, revenue, unpaid, parcels, contracts, revenueByMonth, overdueRows] = await Promise.all([
     db.execute(`SELECT
       COUNT(*) as totalRooms,
       SUM(CASE WHEN status='occupied' THEN 1 ELSE 0 END) as occupied,
       SUM(CASE WHEN status='vacant' THEN 1 ELSE 0 END) as vacant
       FROM rooms`),
     db.execute({ sql: `SELECT COALESCE(SUM(total),0) as total FROM bills WHERE month=? AND year=? AND status='paid'`, args: [month, year] }),
-    db.execute(`SELECT COUNT(*) as c, COALESCE(SUM(total),0) as amount FROM bills WHERE status='unpaid'`),
+    db.execute(`SELECT COUNT(*) as c, COALESCE(SUM(total),0) as amount FROM bills WHERE status IN ('unpaid','overdue')`),
     db.execute(`SELECT COUNT(*) as c FROM parcels WHERE status='waiting'`),
     db.execute(`SELECT COUNT(*) as c FROM contracts WHERE status='active' AND date(end_date) <= date('now','+30 days')`),
     db.execute({ sql: `SELECT month, year, SUM(total) as total FROM bills WHERE status='paid' AND year >= ? GROUP BY year, month ORDER BY year, month`, args: [year - 1] }),
+    db.execute(`
+      SELECT b.room_id, r.room_number,
+        t.name as tenant_name, t.phone as tenant_phone,
+        COUNT(*) as months_unpaid,
+        CAST(SUM(b.total) AS INTEGER) as total_owed,
+        MIN(b.month) as since_month,
+        MIN(b.year) as since_year
+      FROM bills b
+      JOIN rooms r ON r.id = b.room_id
+      LEFT JOIN tenants t ON t.room_id = b.room_id AND t.status = 'active'
+      WHERE b.status IN ('unpaid','overdue')
+      GROUP BY b.room_id
+      ORDER BY months_unpaid DESC, total_owed DESC
+    `),
   ]);
 
   const rs = toObject(roomStats) as { totalRooms: number; occupied: number; vacant: number };
@@ -36,6 +56,7 @@ export async function GET() {
     waitingParcels: Number(par.c),
     expiringContracts: Number(con.c),
     revenueByMonth: toObjects(revenueByMonth),
+    overdueRooms: toObjects(overdueRows),
     currentMonth: month,
     currentYear: year,
   });

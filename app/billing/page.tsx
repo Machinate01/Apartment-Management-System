@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Plus, CheckCircle, X, Printer } from 'lucide-react';
+import { Receipt, Plus, CheckCircle, X, Printer, History } from 'lucide-react';
 import Link from 'next/link';
 
 interface Room { id: number; room_number: string; rent_price: number; status: string; tenant_name?: string; }
@@ -23,6 +23,8 @@ export default function BillingPage() {
   const [meters, setMeters] = useState<Meter[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ room_id: '', other: '0', other_desc: '', due_date: '' });
+  const [historyRoom, setHistoryRoom] = useState<{ id: number; number: string } | null>(null);
+  const [historyBills, setHistoryBills] = useState<Bill[]>([]);
 
   const load = () => {
     fetch('/api/rooms').then(r => r.json()).then(setRooms);
@@ -98,6 +100,12 @@ export default function BillingPage() {
     load();
   };
 
+  const openHistory = async (roomId: number, roomNumber: string) => {
+    setHistoryRoom({ id: roomId, number: roomNumber });
+    const res = await fetch(`/api/bills?room_id=${roomId}`);
+    setHistoryBills(await res.json());
+  };
+
   const statusBadge = (s: string) => {
     if (s === 'paid') return <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">ชำระแล้ว</span>;
     if (s === 'overdue') return <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">เกินกำหนด</span>;
@@ -167,6 +175,7 @@ export default function BillingPage() {
                     ) : (
                       <button onClick={() => markUnpaid(b)} title="ยกเลิกการชำระ" className="text-slate-400 hover:text-orange-600"><CheckCircle size={16} /></button>
                     )}
+                    <button onClick={() => openHistory(b.room_id, b.room_number)} title="ประวัติการชำระ" className="text-slate-400 hover:text-blue-600"><History size={15} /></button>
                     <button onClick={() => deleteBill(b.id)} className="text-slate-300 hover:text-red-500"><X size={15} /></button>
                   </div>
                 </td>
@@ -176,6 +185,57 @@ export default function BillingPage() {
           </tbody>
         </table>
       </div>
+
+      {/* History Modal */}
+      {historyRoom && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-semibold text-slate-800">ประวัติการชำระ — ห้อง {historyRoom.number}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{historyBills.length} รายการ</p>
+              </div>
+              <button onClick={() => { setHistoryRoom(null); setHistoryBills([]); }} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {historyBills.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">ยังไม่มีประวัติ</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 sticky top-0">
+                    <tr>
+                      {['เดือน', 'ค่าเช่า', 'น้ำ+ไฟ', 'รวม', 'สถานะ', 'วันชำระ'].map(h => (
+                        <th key={h} className="text-left px-3 py-2.5 text-slate-500 font-medium text-xs">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyBills.map(b => (
+                      <tr key={b.id} className={`border-t border-slate-50 ${b.status === 'paid' ? '' : 'bg-red-50/40'}`}>
+                        <td className="px-3 py-2.5 font-medium">{MONTHS_TH[b.month]} {b.year}</td>
+                        <td className="px-3 py-2.5 text-slate-500">฿{b.rent.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-slate-500">฿{(b.water + b.electricity).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 font-semibold">฿{b.total.toLocaleString()}</td>
+                        <td className="px-3 py-2.5">{statusBadge(b.status)}</td>
+                        <td className="px-3 py-2.5 text-slate-400 text-xs">{b.paid_date || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t border-slate-200">
+                    <tr>
+                      <td colSpan={3} className="px-3 py-2.5 text-sm font-semibold text-slate-700">รวมทั้งหมด</td>
+                      <td className="px-3 py-2.5 font-bold text-slate-800">฿{historyBills.reduce((s, b) => s + b.total, 0).toLocaleString()}</td>
+                      <td colSpan={2} className="px-3 py-2.5 text-xs text-slate-400">
+                        ชำระแล้ว {historyBills.filter(b => b.status === 'paid').length}/{historyBills.length} เดือน
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

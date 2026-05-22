@@ -8,10 +8,19 @@ export async function GET(req: NextRequest) {
   const year = searchParams.get('year');
   const status = searchParams.get('status');
 
+  const roomId = searchParams.get('room_id');
+
+  // Auto-mark overdue: unpaid bills past due_date → overdue
+  await db.execute(`
+    UPDATE bills SET status='overdue'
+    WHERE status='unpaid' AND due_date IS NOT NULL AND due_date < date('now')
+  `);
+
   let sql = `SELECT b.*, r.room_number, t.name as tenant_name
     FROM bills b JOIN rooms r ON r.id = b.room_id
     LEFT JOIN tenants t ON t.room_id = b.room_id AND t.status = 'active' WHERE 1=1`;
   const args: (string | number)[] = [];
+  if (roomId) { sql += ' AND b.room_id = ?'; args.push(Number(roomId)); }
   if (month) { sql += ' AND b.month = ?'; args.push(Number(month)); }
   if (year) { sql += ' AND b.year = ?'; args.push(Number(year)); }
   if (status) { sql += ' AND b.status = ?'; args.push(status); }

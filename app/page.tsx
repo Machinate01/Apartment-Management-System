@@ -1,8 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Home, Users, Banknote, AlertCircle, Package, FileWarning, TrendingUp } from 'lucide-react';
+import { Home, Users, Banknote, AlertCircle, Package, FileWarning, TrendingUp, Phone } from 'lucide-react';
+import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+interface OverdueRoom {
+  room_id: number;
+  room_number: string;
+  tenant_name?: string;
+  tenant_phone?: string;
+  months_unpaid: number;
+  total_owed: number;
+  since_month: number;
+  since_year: number;
+}
 
 interface DashboardData {
   totalRooms: number;
@@ -14,6 +26,7 @@ interface DashboardData {
   waitingParcels: number;
   expiringContracts: number;
   revenueByMonth: { month: number; year: number; total: number }[];
+  overdueRooms: OverdueRoom[];
   currentMonth: number;
   currentYear: number;
 }
@@ -54,6 +67,50 @@ export default function DashboardPage() {
         <StatCard label="พัสดุรอรับ" value={data.waitingParcels} icon={Package} color="orange" sub="รายการรอรับ" />
         <StatCard label="สัญญาใกล้หมด" value={data.expiringContracts} icon={FileWarning} color="yellow" sub="ภายใน 30 วัน" />
       </div>
+
+      {/* ค้างชำระ panel */}
+      {data.overdueRooms && data.overdueRooms.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 bg-red-50 border-b border-red-100">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={17} className="text-red-500" />
+              <span className="font-semibold text-red-700">ค้างชำระ {data.overdueRooms.length} ห้อง</span>
+            </div>
+            <span className="text-sm font-bold text-red-600">฿{data.unpaidAmount.toLocaleString()}</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {data.overdueRooms.map(r => (
+              <div key={r.room_id} className="flex items-center justify-between px-5 py-3 hover:bg-red-50/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-sm">
+                    {r.room_number}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">{r.tenant_name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {r.months_unpaid > 1 && (
+                        <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">ค้าง {r.months_unpaid} เดือน</span>
+                      )}
+                      <span className="text-xs text-slate-400">ตั้งแต่ {MONTHS_TH[r.since_month]} {r.since_year}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {r.tenant_phone && (
+                    <a href={`tel:${r.tenant_phone}`} className="text-slate-400 hover:text-blue-600">
+                      <Phone size={15} />
+                    </a>
+                  )}
+                  <span className="text-sm font-bold text-red-600">฿{Number(r.total_owed).toLocaleString()}</span>
+                  <Link href={`/billing`} className="text-xs bg-slate-700 text-white px-2 py-1 rounded hover:bg-slate-800">
+                    ดูบิล
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
         <div className="flex items-center gap-2 mb-4">
